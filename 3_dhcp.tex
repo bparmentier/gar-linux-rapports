@@ -1,0 +1,130 @@
+\documentclass[11pt,a4paper,oneside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\pagestyle{headings}
+\author{Bruno Parmentier \and Olivier Marcotte}
+\title{Gestion et administration des réseaux - Linux \\[1cm] \emph{Mise en place
+d'un serveur DHCP}}
+\date{27 février 2014}
+\begin{document}
+
+\begin{titlepage}
+    \maketitle
+    \thispagestyle{empty}
+\end{titlepage}
+
+\section{Objectif}
+Configuration du réseau avec adressage dynamique.
+
+La machine \emph{darkstar} (la passerelle) fera office de serveur DHCP. Les
+trois autres machines du réseau obtiendront des adresses IP fixes en DHCP. Toute
+autre machine voulant se connecter au réseau obtiendra une adresse IP dynamique
+sur le réseau local dans le \emph{range} \verb#172.16.24.4-254#.
+
+\section{Mode opératoire}
+
+\subsection{Configuration du serveur DHCP}
+Dans le fichier \verb#/etc/dhcpd.conf#~:
+\begin{verbatim}
+# domaine
+option domain-name "marpar.org";
+option domain-name-server 172.16.0.3;
+
+# temps de bail
+default-lease-time 600;
+max-lease-time 7200;
+
+# DMZ
+subnet 172.16.14.0 netmask 255.255.255.0 {
+    range 172.16.14.3 172.16.14.254;
+    option routers 172.16.14.1;
+    deny unknown-clients;
+}
+
+# local
+subnet 172.16.24.0 netmask 255.255.255.0 {
+    range 172.16.24.4 172.16.24.254;
+    option routers 172.16.24.1;
+    deny unknown-clients;
+}
+
+# host dmz-server
+host dmz-server {
+    hardware ethernet 00:05:5d:69:d1:30;
+    fixed-adress 172.16.14.2;
+}
+
+# host local1
+host loca1 {
+    hardware ethernet 00:12:3f:62:a4:7b;
+    fixed-adress 172.16.24.2;
+}
+
+# host local2
+host dmz-server {
+    hardware ethernet 00:12:3f:3b:f6:e5;
+    fixed-adress 172.16.24.3;
+}
+
+# host bp-laptop
+host bp-laptop {
+    hardware ethernet xx:xx:xx:xx:xx:xx;
+}
+\end{verbatim}
+
+Pour démarrer le serveur DHCP, exécuter la commande suivante~:
+\begin{verbatim}
+dhcpd eth1 eth2
+\end{verbatim}
+
+Afin de démarrer le démon avec l'ordinateur, ajouter cette même commande au
+fichier \verb#/etc/rc.d/rc.local#.
+
+\subsection{Configuration des clients}
+
+\subsubsection{DMZ}
+Modifier le fichier \verb#/etc/rc.d/rc.inet1.conf# sur \emph{dmz-server} comme
+suit~:
+\begin{verbatim}
+# Config information for eth0:
+IPADDR[0]=""
+NETMASK[0]=""
+USE_DHCP[0]="yes"
+DHCP_HOSTNAME[0]="dmz-server"
+\end{verbatim}
+
+\subsubsection{Local}
+Modifier le fichier \verb#/etc/rc.d/rc.inet1.conf# sur \emph{local1} comme
+suit~:
+\begin{verbatim}
+# Config information for eth0:
+IPADDR[0]=""
+NETMASK[0]=""
+USE_DHCP[0]="yes"
+DHCP_HOSTNAME[0]="local1"
+\end{verbatim}
+
+Modifier le fichier \verb#/etc/rc.d/rc.inet1.conf# sur \emph{local2} comme
+suit~:
+\begin{verbatim}
+# Config information for eth0:
+IPADDR[0]=""
+NETMASK[0]=""
+USE_DHCP[0]="yes"
+DHCP_HOSTNAME[0]="local2"
+\end{verbatim}
+
+Exécuter la commande \verb#dhcpcd# (ou \verb#dhclient#) pour lancer le démon du
+client DHCP sur chacune des machines.
+
+\section{Conclusion}
+Toutes les machines de notre réseau, excepté la passerelle, recoivent une
+adresse IP du serveur DHCP. Celles-ci recoivent également un masque, une
+passerelle et une route par défaut, ainsi qu'une adresse de serveur DNS. Ceci
+facilite grandement la gestion du réseau, car nous pouvons gérer l'adressage de
+celui-ci depuis une seule machine uniquement. Un filtrage par adresse MAC a été
+établi dans la configuration du DHCP.
+
+\end{document}

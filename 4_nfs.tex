@@ -1,0 +1,104 @@
+\documentclass[11pt,a4paper,oneside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\pagestyle{headings}
+\author{Bruno Parmentier \and Olivier Marcotte}
+\title{Gestion et administration des réseaux - Linux \\[1cm] \emph{Mise en place
+d'un partage NFS}}
+\date{27 mars 2014}
+\begin{document}
+
+\begin{titlepage}
+    \maketitle
+    \thispagestyle{empty}
+\end{titlepage}
+
+\section{Objectif}
+Mise en place d'un partage de dossier en NFS sur \emph{darkstar} (la
+passerelle).
+
+Les deux machines \emph{local1} et \emph{local2} auront accès au dossier partagé
+avec différentes permissions et options.
+
+\section{Mode opératoire}
+
+\subsection{Configuration du serveur de fichier NFS}
+Nous créons d'abord le dossier \verb#/tmp/public# qui sera le dossier partagé.
+
+Dans le fichier \verb#/etc/exports#~:
+\begin{verbatim}
+/tmp/public 172.16.24.2(rw,async) 172.16.24.3(rw,no_root_squash)
+\end{verbatim}
+
+Pour partager le dossier pour un (sous-)réseau complet, on peut modifier la
+ligne comme suit~:
+\begin{verbatim}
+/tmp/public 172.16.24.0/24(rw,sync)
+\end{verbatim}
+
+Voici un petit résumé des options testées~:
+\begin{itemize}
+    \item \verb#rw#~: le dossier est en lecture/écriture~;
+    \item \verb#ro#~: le dossier est en lecture uniquement~;
+    \item \verb#sync#~: mode par défaut, les fichiers sont synchronisés en
+        continu~;
+    \item \verb#async#~: permet d'augmenter les performance, au risque d'avoir
+        des données corrompues en cas de crash du serveur~;
+    \item \verb#root_squash#~: option par défaut, l'uid et le gid d'un fichier
+        créé par un client root sont mappés sur 65534 (\emph{nobody})~;
+    \item \verb#no_root_squash#~: l'uid et le gid d'un fichier créé par un
+        client root restent sur 0 (root).
+\end{itemize}
+
+Pour lancer le démon du serveur NFS, exécuter la commande
+\verb#/etc/rc.d/rc.nfsd start#.
+
+Pour recharger la table des systèmes de fichiers NFS exportés, sans couper la
+connexion (après une modification du fichier \verb#/etc/exports# par exemple),
+exécuter la commande suivante~:
+\begin{verbatim}
+exportfs -rf
+\end{verbatim}
+
+Pour lancer le démon nfsd au démarrage de l'ordinateur, rendre exécutable le
+fichier \verb#/etc/rc.d/rc.nfsd#.
+
+On peut également configurer les permissions d'accès des clients au serveur via
+les fichiers \verb#/etc/hosts.allow# et \verb#/etc/hosts.deny#.
+
+Exemple pour \verb#/etc/hosts.deny# (interdit l'accès depuis la machine
+\verb#172.16.24.2#)~:
+\begin{verbatim}
+# /etc/hosts.deny
+
+lockd: 172.16.24.2
+rquotad: 172.16.24.2
+mountd: 172.16.24.2
+statd: 172.16.24.2
+\end{verbatim}
+
+\subsection{Configuration des clients}
+Montons le dossier partagé par \emph{darkstar} sur un dossier local,
+\verb#/mnt/tmp# par exemple. Pour le monter directement, activer d'abord portmap
+et statd avec la commande \verb#/etc/rc.d/rc.rpc start#.
+
+Monter ensuite le système de fichier NFS~:
+\begin{verbatim}
+mount 172.16.24.1:/tmp/public /mnt/tmp
+\end{verbatim}
+
+Afin d'activer le montage du dossier au démarrage du client, rendre exécutable
+le fichier \verb#/etc/rc.d/rc.rpc# et ajouter la ligne suivante dans
+\verb#/etc/fstab#~:
+\begin{verbatim}
+172.16.24.1:/tmp/public    /mnt/tmp    nfs     rw      0   0
+\end{verbatim}
+
+\section{Conclusion}
+Le partage d'un dossier a bien été effectué. Nous avons pu vérifier et comparer
+les options spécifiques à chaque client indiquées dans le fichier
+\verb#/etc/exports# du serveur.
+
+\end{document}

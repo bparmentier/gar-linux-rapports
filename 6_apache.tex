@@ -1,0 +1,201 @@
+\documentclass[11pt,a4paper,oneside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{color}
+\definecolor{gray}{rgb}{0.9,0.9,0.9}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily,
+    backgroundcolor=\color{gray},
+    keepspaces=true,
+    columns=flexible}
+\lstset{literate=
+    {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+    {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+    {à}{{\`a}}1 {è}{{\`e}}1 {ì}{{\`i}}1 {ò}{{\`o}}1 {ù}{{\`u}}1
+    {À}{{\`A}}1 {È}{{\'E}}1 {Ì}{{\`I}}1 {Ò}{{\`O}}1 {Ù}{{\`U}}1
+    {ä}{{\"a}}1 {ë}{{\"e}}1 {ï}{{\"i}}1 {ö}{{\"o}}1 {ü}{{\"u}}1
+    {Ä}{{\"A}}1 {Ë}{{\"E}}1 {Ï}{{\"I}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1
+    {â}{{\^a}}1 {ê}{{\^e}}1 {î}{{\^i}}1 {ô}{{\^o}}1 {û}{{\^u}}1
+    {Â}{{\^A}}1 {Ê}{{\^E}}1 {Î}{{\^I}}1 {Ô}{{\^O}}1 {Û}{{\^U}}1
+    {œ}{{\oe}}1 {Œ}{{\OE}}1 {æ}{{\ae}}1 {Æ}{{\AE}}1 {ß}{{\ss}}1
+    {ç}{{\c c}}1 {Ç}{{\c C}}1 {ø}{{\o}}1 {å}{{\r a}}1 {Å}{{\r A}}1
+    {€}{{\EUR}}1 {£}{{\pounds}}1
+}
+\newcommand{\inlinecode}{\lstinline[breaklines=true]}
+\usepackage[french]{babel}
+\pagestyle{headings}
+\author{Bruno Parmentier \and Olivier Marcotte}
+\title{Gestion et administration des réseaux - Linux \\[1cm] \emph{Configuration
+d'un serveur Apache}}
+\date{8 mai 2014}
+\begin{document}
+
+\begin{titlepage}
+    \maketitle
+    \thispagestyle{empty}
+\end{titlepage}
+
+\section{Objectif}
+Mise en place d'un serveur web Apache sur la machine de la DMZ.
+
+\section{Mode opératoire}
+
+\subsection{Démarrage d'Apache}
+
+La configuration d'Apache se fait dans le fichier \inlinecode{/etc/httpd/httpd.conf}
+ainsi que dans les fichiers contenus dans le répertoire
+\inlinecode{/etc/httpd/httpd/extra/}.
+Nous démarrons le démon avec la commande \inlinecode{/etc/rc.d/rc.httpd start}. Pour
+lancer le serveur au démarrage de la machine, rendre exécutable le script avec
+la commande \inlinecode{chmod +x /etc/rc.d/rc.httpd}.
+
+\subsection{Vérification du nombre de démons}
+
+Nous pouvons vérifier le nombre de démons lancés avec la commande \inlinecode{htop} ou
+\inlinecode{ps aux | grep httpd}.
+
+\subsection{Augmentation du nombre de démons}
+
+Le nombre de démons qu'Apache est autorisé à lancer est à configurer dans le
+fichier \inlinecode{/etc/httpd/extra/httpd-mpm.conf}.
+
+\subsection{Modification de la page d'accueil}
+
+La page d'accueil par défaut (\inlinecode{index.html}) se trouve dans le dossier
+\inlinecode{/srv/httpd/htdocs/}. Nous modifions cette page et vérifions que celle-ci
+apparaît bien lorsque l'on entre l'adresse IP du serveur (\inlinecode{172.16.14.2})
+dans un navigateur d'une autre machine du réseau.
+
+\subsection{Configuration de sites par utilisateur}
+
+La configuration de sites par utilisateurs permet à chaque utilisateur ayant un
+compte système d'avoir un espace web personnel, mais en utilisant chacun le même
+nom de domaine. La configuration du module se fait dans le fichier
+\inlinecode{/etc/httpd/extra/httpd-userdir.conf}. Décommenter également les lignes
+suivantes dans \inlinecode{/etc/httpd/httpd.conf}~:
+
+\begin{lstlisting}
+LoadModule userdir_module lib/httpd/modules/mod_userdir.so
+\end{lstlisting}
+
+\begin{lstlisting}
+Include /etc/httpd/extra/httpd-userdir.conf
+\end{lstlisting}
+
+Nous créons un utilisateur \textbf{marpar} avec la commande suivante~:
+\begin{lstlisting}
+useradd -m marpar
+\end{lstlisting}
+\inlinecode{-m} permettant de créer un répertoire personnel dans
+\inlinecode{/home}.
+
+Les fichiers du site sont à placer dans le dossier
+\inlinecode{~/public_html/} et la page d'accueil de chaque site aura une adresse de la
+forme \inlinecode{http://www.domain.tld/~username}.
+
+Par exemple, le fichier \inlinecode{/home/marpar/public_html/index.html} sera dans
+notre cas accessible à l'adresse \inlinecode{http://dmz-server.dmz4/~marpar} ou
+\inlinecode{http://172.16.14.2/~marpar}.
+
+\subsection{Configuration de site par adresse IP}
+
+Une deuxième solution pour mettre en place plusieurs sites internet sur une même
+machine consiste à attribuer une adresse IP à chacun des sites. Le nombre de
+cartes réseaux étant limité sur la machine, il est possible de créer des
+interfaces virtuelles. Ceci est réalisé avec la commande suivante~:
+\begin{lstlisting}
+ifconfig eth0:1 172.16.14.20/24
+\end{lstlisting}
+
+Afin d'activer le support des vhosts dans Apache, décommenter la ligne suivante
+dans \inlinecode{/etc/httpd/httpd.conf}~:
+\begin{lstlisting}
+Include /etc/httpd/extra/httpd-vhosts.conf
+\end{lstlisting}
+
+Modifier ensuite le fichier \inlinecode{/etc/httpd/extra/httpd-vhosts.conf} comme
+suit~:
+\begin{lstlisting}
+<VirtualHost 172.16.14.20:80>
+  ServerAdmin   webmaster@marpar.dmz4
+  DocumentRoot  "/srv/httpd/htdocs/virtualhost"
+  ServerName    marpar.dmz4
+  ErrorLog      "/var/log/httpd/marpar.dmz4-error_log"
+  CustomLog     "/var/log/httpd/marpar.dmz4-access_log" common
+</VirtualHost>
+\end{lstlisting}
+
+Ajouter le sous-domaine \textbf{marpar.dmz4} au serveur DNS (ne pas oublier de
+changer le numéro de série du fichier de zone)~:
+\begin{lstlisting}
+marpar.dmz4.    1D  IN  A   172.16.14.20
+\end{lstlisting}
+
+\subsection{Configuration de site par nom}
+
+La troisième solution permet de configurer plusieurs sites en fonction de leur
+nom de domaine, le tout sur une même interface réseau. Nous créons deux sites
+\inlinecode{xxx.dmz4} et \inlinecode{yyy.dmz4} dans
+\inlinecode{/etc/httpd/extra/httpd-vhosts.conf}~:
+\begin{lstlisting}
+<VirtualHost 172.16.14.2:80>
+  ServerAdmin   webmaster@xxx.dmz4
+  DocumentRoot  "/srv/httpd/htdocs/xxx.dmz4"
+  ServerName    xxx.dmz4
+  ErrorLog      "/var/log/httpd/xxx.dmz4-error_log"
+  CustomLog     "/var/log/httpd/xxx.dmz4-access_log" common
+</VirtualHost>
+
+<VirtualHost 172.16.14.2:80>
+  ServerAdmin   webmaster@yyy.dmz4
+  DocumentRoot  "/srv/httpd/htdocs/yyy.dmz4"
+  ServerName    yyy.dmz4
+  ErrorLog      "/var/log/httpd/yyy.dmz4-error_log"
+  CustomLog     "/var/log/httpd/yyy.dmz4-access_log" common
+</VirtualHost>
+\end{lstlisting}
+
+Ajouter les sous-domaines \textbf{xxx.dmz4} et \textbf{yyy.dmz4} au serveur
+DNS~:
+\begin{lstlisting}
+xxx.dmz4.       1D  IN  A   172.16.14.2
+yyy.dmz4.       1D  IN  A   172.16.14.2
+\end{lstlisting}
+
+\subsection{Suppléments}
+\subsubsection{Page d'erreur}
+Ajoutez la ligne suivante dans le \inlinecode{VirtualHost} désiré ou dans un fichier
+\inlinecode{.htaccess} situé à la racine du site ciblé~:
+\begin{lstlisting}
+ErrorDocument       404 /404.html
+\end{lstlisting}
+
+\subsubsection{Changement du port d'écoute}
+Le port d'écoute peut être changé pour tous les sites dans le fichier
+\inlinecode{/etc/httpd/httpd.conf} avec l'option \inlinecode{Listen XX}.
+
+\subsubsection{Sécurisation d'un site par mot de passe}
+Créer un fichier \inlinecode{.htpasswd} avec les noms d'utilisateurs et mots de passe
+des personnes autorisées à y accéder. Ce fichier doit être créé avec la commande
+\inlinecode{htpasswd}~:
+\begin{lstlisting}
+htpasswd -B -c /etc/http.passwd <username>
+\end{lstlisting}
+\inlinecode{-B} permettant d'utiliser l'algorithme bcrypt pour le chiffrage du mot de
+passe et \inlinecode{-c} définissant le nom du fichier cible.
+
+Enfin, ajouter à \inlinecode{.htaccess} les lignes suivantes~:
+\begin{lstlisting}
+AuthType            Basic
+AuthName            "Zone sécurisée"
+AuthUserFile        /etc/http.passwd
+Require             user <username>
+\end{lstlisting}
+
+\section{Conclusion}
+
+Tous les sites créés sont fonctionnels et sont accessibles depuis les autres
+machines de notre réseau (\inlinecode{dmz4} et \inlinecode{local4}).
+
+\end{document}

@@ -1,0 +1,58 @@
+\documentclass[11pt,a4paper,oneside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[french]{babel}
+\pagestyle{headings}
+\author{Bruno Parmentier \and Olivier Marcotte}
+\title{Gestion et administration des réseaux - Linux \\[1cm] \emph{Installation de
+Slackware}}
+\date{27 février 2014}
+\begin{document}
+
+\begin{titlepage}
+\maketitle
+\thispagestyle{empty}
+\end{titlepage}
+
+\section{Objectif}
+Partitionnement de disques et installation de la distribution GNU/Linux
+Slackware 14.0 sur quatre machines Dell.
+
+\section{Mode opératoire}
+
+\subsection{Préparation}
+Au démarrage de l'ordinateur, à l'étape POST, appuyer sur F12 afin de
+sélectionner le boot sur la carte réseau (vérifier que l'option est activée dans
+le BIOS). L'ordinateur va rechercher un serveur PXE sur le réseau. La machine
+à l'adresse \verb#172.16.0.147# contient une image ISO de Slackware 14.0 qui va
+étre récupérée pour l'installation.
+
+\subsection{Partitionnement}
+Une fois Slackware démarré sur la machine, sélectionner le bon layout de clavier
+(be-latin1 dans notre cas).
+Taper \verb#fdisk -l# pour visionner les partitions existantes.
+
+Le disque sur lequel nous allons faire l'installation est \verb#/dev/sda#. Nous
+allons créer deux partitions primaires. La première, \verb#/dev/sda1# (10 Gio),
+contiendra le root \verb#/#, la deuxième, \verb#/dev/sda2# (2 Gio), sera la
+partition \verb#swap#.
+
+\subsection{Installation}
+Lancer le script d'installation avec la commande \verb#setup#.
+\begin{enumerate}
+    \item \verb#KEYMAP# : \verb#azerty/be-latin1.map#
+    \item \verb#ADDSWAP# : \verb#/dev/sda2# OK
+    \item \verb#TARGET# : \verb#/dev/sda1# OK $\rightarrow$ ext2
+    \item \verb#SOURCE# : Install from NFS $\rightarrow$ DHCP $\rightarrow$ NFS
+        server IP : \verb#172.16.0.147# $\rightarrow$ Slackware directory :
+        \verb#/pub/slackware-14.00#
+    \item \verb#SELECT# : laisser les options par défaut
+    \item \verb#INSTALL# : full
+\end{enumerate}
+
+\section{Conclusion}
+L'étape de partitionnement du disque est l'étape la plus délicate de
+l'installation. Tout s'est cependant bien déroulé, la distribution est
+installée et est fonctionnelle.
+\end{document}
