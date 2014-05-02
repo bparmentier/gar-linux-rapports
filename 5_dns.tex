@@ -1,0 +1,191 @@
+\documentclass[11pt,a4paper,oneside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{color}
+\definecolor{gray}{rgb}{0.9,0.9,0.9}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily,
+    backgroundcolor=\color{gray},
+    captionpos=b,
+    keepspaces=true,
+    columns=flexible}
+\lstset{literate=
+    {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+    {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+    {à}{{\`a}}1 {è}{{\`e}}1 {ì}{{\`i}}1 {ò}{{\`o}}1 {ù}{{\`u}}1
+    {À}{{\`A}}1 {È}{{\'E}}1 {Ì}{{\`I}}1 {Ò}{{\`O}}1 {Ù}{{\`U}}1
+    {ä}{{\"a}}1 {ë}{{\"e}}1 {ï}{{\"i}}1 {ö}{{\"o}}1 {ü}{{\"u}}1
+    {Ä}{{\"A}}1 {Ë}{{\"E}}1 {Ï}{{\"I}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1
+    {â}{{\^a}}1 {ê}{{\^e}}1 {î}{{\^i}}1 {ô}{{\^o}}1 {û}{{\^u}}1
+    {Â}{{\^A}}1 {Ê}{{\^E}}1 {Î}{{\^I}}1 {Ô}{{\^O}}1 {Û}{{\^U}}1
+    {œ}{{\oe}}1 {Œ}{{\OE}}1 {æ}{{\ae}}1 {Æ}{{\AE}}1 {ß}{{\ss}}1
+    {ç}{{\c c}}1 {Ç}{{\c C}}1 {ø}{{\o}}1 {å}{{\r a}}1 {Å}{{\r A}}1
+    {€}{{\EUR}}1 {£}{{\pounds}}1
+}
+\newcommand{\inlinecode}{\lstinline[breaklines=true]}
+\usepackage[french]{babel}
+\usepackage{caption}
+\pagestyle{headings}
+\author{Bruno Parmentier \and Olivier Marcotte}
+\title{Gestion et administration des réseaux - Linux \\[1cm] \emph{Configuration
+de serveurs DNS}}
+\date{24 avril 2014}
+\begin{document}
+
+\begin{titlepage}
+    \maketitle
+    \thispagestyle{empty}
+\end{titlepage}
+
+\section{Introduction}
+Le DNS (\emph{Domain Name System}) permet de traduire un nom de domaine en
+adresse IP, et inversement. Il est organisé de façon hiérarchique. Un domaine
+tel que \url{www.opennic.org.} se lit de droite à gauche~:
+\begin{itemize}
+    \item la racine (\textbf{.}) est gérée par les 13 serveurs roots~;
+    \item le TLD, ou \emph{top-level domain} (\textbf{org}) est délégué à une
+        organisation par pays (ccTLD~: .be, .fr, .sx, etc.) ou générique (gTLD~:
+        .com, .org, .net, etc.)~;
+    \item le SLD, ou \emph{second-level domain} (\textbf{opennic}) est
+        enregistrée auprès de l'organisation gérant le TLD correspondant~;
+    \item les sous-domaines suivants (\textbf{www}).
+\end{itemize}
+
+Avant l'adoption des serveurs DNS, la résolution des noms se faisait sur chaque
+machine dans le fichier \inlinecode{hosts}. Avec DNS, cette résolution n'est
+plus liée à un fichier, elle est dynamique.
+
+\section{Objectif}
+Mise en place d'un serveur DNS maître sur la gateway et d'un esclave sur la
+machine de la DMZ.
+
+Nous utiliserons le logiciel \textbf{BIND} comme serveur DNS.
+
+\section{Mode opératoire}
+
+Sur les deux machines, démarrer bind avec la commande
+\inlinecode{/etc/rc.d/rc.bind start}. Rendre le fichier correspondant exécutable
+avec la commande \inlinecode{chmod +x /etc/rc.d/rc.bind} afin de lancer le
+serveur au démarrage.
+
+\subsection{Configuration du serveur maître}
+
+La déclaration des zones se fait dans le fichier \inlinecode{/etc/named.conf}.
+Nous devons créer deux zones, \textbf{dmz4} et \textbf{local4}, respectivement
+pour nos sous-réseaux \inlinecode{172.16.14.0/24} et
+\inlinecode{172.16.24.0/24}.
+
+Ajouter les lignes suivantes dans \inlinecode{/etc/named.conf}~:
+\begin{lstlisting}[caption=\inlinecode{/etc/named.conf}]
+zone "local4" IN {
+	type master;
+	file "caching-example/local4.zone";
+};
+
+zone "24.16.172.in-addr.arpa" IN {
+	type master;
+	file "caching-example/local4.rev";
+};
+
+zone "dmz4" IN {
+	type master;
+	file "caching-example/dmz4.zone";
+};
+
+zone "14.16.172.in-addr.arpa" IN {
+	type master;
+	file "caching-example/dmz4.rev";
+};
+\end{lstlisting}
+
+Ensuite, créer les fichiers de zones comme suit dans le répertoire
+\inlinecode{/var/named/caching-example/} (les enregistrements DNS peuvent être
+de type IN, A, AAAA, NS, PTR, MX, etc.)~:
+\lstinputlisting[caption=\inlinecode{/var/named/caching-example/dmz4.zone}]{resources/dmz4.zone}
+\lstinputlisting[caption=\inlinecode{/var/named/caching-example/dmz4.rev}]{resources/dmz4.rev}
+\lstinputlisting[caption=\inlinecode{/var/named/caching-example/local4.zone}]{resources/local4.zone}
+\lstinputlisting[caption=\inlinecode{/var/named/caching-example/local4.rev}]{resources/local4.rev}
+
+Indiquer enfin dans \inlinecode{/etc/resolv.conf} l'adresse du serveur DNS à
+utiliser, la boucle local~:
+\begin{lstlisting}[caption=\inlinecode{/etc/resolv.conf}]
+nameserver 127.0.0.1
+\end{lstlisting}
+
+\subsection{Configuration du serveur esclave}
+
+Le serveur esclave doit uniquement connaître l'adresse de son maître. Ceci se
+fait dans son fichier \inlinecode{/etc/named.conf} en ajoutant la ligne
+\inlinecode{masters} et en définissant le \inlinecode{type} comme
+\inlinecode{slave} dans chaque zone~:
+\begin{lstlisting}[caption=\inlinecode{/etc/named.conf}]
+zone "local4" IN {
+    type slave;
+    masters 172.16.24.1;
+    file "caching-example/local4.zone";
+};
+
+zone "24.16.172.in-addr.arpa" IN {
+    type slave;
+    masters 172.16.24.1;
+    file "caching-example/local4.rev";
+};
+
+zone "dmz4" IN {
+    type slave;
+    masters 172.16.14.1;
+    file "caching-example/dmz4.zone";
+};
+
+zone "14.16.172.in-addr.arpa" IN {
+    type slave;
+    masters 172.16.14.1;
+    file "caching-example/dmz4.rev";
+};
+\end{lstlisting}
+
+\subsection{Vérification du fonctionnement des serveurs}
+
+Remplacer dans le fichier \inlinecode{/etc/dhcpd.conf} sur la gateway (serveur
+DHCP) l'adresse du serveur DNS actuel par celle de notre nouveau serveur DNS
+esclave (\inlinecode{172.16.14.2}). Ajouter les lignes suivantes~:
+\begin{lstlisting}[caption=\inlinecode{/etc/dhcpd.conf}]
+option domain-search "dmz4", "local4";
+option domain-name-servers 172.16.14.2;
+\end{lstlisting}
+
+Relancer \textbf{dhcpd} sur la gateway, puis \textbf{dhcpcd} sur les clients.
+Dorénavant, les requêtes DNS seront traitées par notre serveur esclave.
+
+Sur le serveur maître, modifier les fichiers de zones et tester différentes
+valeurs de rafraichissement. Ne pas oublier d'incrémenter la valeur du numéro de
+série (par convention, sous la forme AAAAMMJJSS, où AAAA est l'année, MM est le
+mois, JJ est le jour et SS est un numéro de séquence).
+
+Vérifier que le contenu du répertoire \inlinecode{/var/named/caching-example/}
+sur le serveur esclave a bien été récupéré depuis le serveur maître.
+
+\subsection{Divers}
+\begin{itemize}
+    \item les commandes \textbf{dig} et \textbf{nslookup} peuvent être utiles
+        pour questionner les serveurs DNS (vérifier notamment le temps de
+        réponse après deux requêtes vers un même site pour déterminer si le
+        serveur DNS fait du caching)~;
+    \item \textbf{tcpdump} permet de sniffer le traffic sur une interface
+        réseau. L'on peut ainsi vérifier le passage de paquets DNS NOTIFY depuis
+        le serveur maître vers l'exclave~;
+    \item \textbf{named-checkconf} permet de vérifier la syntaxe de
+        \inlinecode{/etc/named.conf}, tandis que \textbf{named-checkzone}
+        vérifie l'intégrité et la syntaxe d'un fichier de zone~;
+\end{itemize}
+
+\section{Conclusion}
+
+Nous avons mis en place deux serveurs DNS~: un maître et un esclave. Le maître
+s'occupe de définir et gérer les zones et l'esclave, quant à lui, traite les
+requêtes des clients et fait du caching. L'esclave se met correctement à jour lorsqu'une
+modification est effectuée sur le maître.
+
+\end{document}
