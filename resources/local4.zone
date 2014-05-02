@@ -1,0 +1,14 @@
+$TTL    86400
+$ORIGIN local4.
+@           1D IN SOA   local4. root.local4. (
+                2014032400  ; serial
+                3H          ; refresh
+                15M         ; retry
+                1W          ; expiry
+                1D )        ; minimum
+
+            1D IN NS    local4.
+            1D IN A     172.16.24.1
+gw          1D IN A     172.16.24.1
+pc1         1D IN A     172.16.24.2
+pc2         1D IN A     172.16.24.3

@@ -1,0 +1,11 @@
+$TTL    86400
+@       IN  SOA dmz4. root.dmz4.  (
+                2014032400 ; serial
+                28800      ; refresh
+                14400      ; retry
+                3600000    ; expire
+                86400 )    ; minimum
+
+        IN      NS      dmz4.
+1       IN      PTR     dmz4.
+2       IN      PTR     dmz-server.dmz4.

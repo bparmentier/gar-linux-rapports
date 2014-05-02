@@ -1,0 +1,12 @@
+$TTL    86400
+$ORIGIN dmz4.
+@           1D IN SOA   root root.dmz4. (
+                2014032400  ; serial
+                3H          ; refresh
+                15M         ; retry
+                1W          ; expiry
+                1D )        ; minimum
+
+            1D IN NS    @
+            1D IN A     172.16.14.1
+dmz-server  1D IN A     172.16.14.2

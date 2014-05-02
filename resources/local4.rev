@@ -1,0 +1,12 @@
+$TTL    86400
+@       IN  SOA local4. root.local4.  (
+                2014042400 ; serial
+                28800      ; refresh
+                14400      ; retry
+                3600000    ; expire
+                86400 )    ; minimum
+
+IN      NS      gw.local4.
+1       IN      PTR     gw.local4.
+2       IN      PTR     pc1.local4.
+3       IN      PTR     pc2.local4.
